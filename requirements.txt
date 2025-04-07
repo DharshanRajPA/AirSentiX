@@ -1,0 +1,25 @@
+# Core ML and Deep Learning
+tensorflow
+transformers
+torch
+scikit-learn
+numpy
+pandas
+
+# Text Preprocessing
+nltk
+regex
+
+# Flask Backend
+flask
+flask-cors
+
+# Tokenization + Progress
+tqdm
+
+# Misc
+matplotlib
+joblib
+
+# For model saving/loading
+h5py

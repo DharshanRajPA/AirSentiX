@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Air-Senti-X — Tweet Sentiment Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <script src="{{ url_for('static', filename='assets/libs/chart.min.js') }}"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-r from-blue-50 to-indigo-100 min-h-screen p-6 transition-all duration-300">
+
+    <!-- Container -->
+    <div class="max-w-3xl mx-auto bg-white dark-mode:bg-gray-800 shadow-xl rounded-2xl p-8 space-y-6">
+
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+            <h1 class="text-3xl font-bold text-indigo-700 dark-mode:text-indigo-300">✈️ Air-Senti-X</h1>
+            <button onclick="toggleDarkMode()"
+                class="bg-indigo-200 dark-mode:bg-indigo-600 text-gray-800 dark-mode:text-white px-3 py-1 rounded-md text-sm font-medium transition">🌓
+                Toggle Dark Mode</button>
+        </div>
+        <p class="text-center text-gray-600 dark-mode:text-gray-300">Analyze tweet sentiment using a BERT-powered AI
+            engine.</p>
+
+        <!-- Input area -->
+        <textarea id="tweetInput" rows="4" placeholder="Paste or type a tweet here..."
+            class="w-full p-4 border rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-400 dark-mode:bg-gray-700 dark-mode:text-white"></textarea>
+
+        <!-- Button -->
+        <div class="text-center">
+            <button onclick="analyzeSentiment()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-2 rounded-xl transition">🔍
+                Analyze Sentiment</button>
+        </div>
+
+        <!-- Loader -->
+        <div id="loader" class="spinner hidden mt-4"></div>
+
+        <!-- Results -->
+        <div id="result" class="hidden space-y-4">
+            <h2 class="text-xl font-bold text-gray-800 dark-mode:text-gray-100">🔎 Analysis Result</h2>
+
+            <!-- Main Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-green-50 dark-mode:bg-green-800 p-4 rounded-xl shadow">
+                    <p class="text-gray-500 dark-mode:text-gray-300">Predicted Sentiment</p>
+                    <p id="sentimentLabel" class="text-2xl font-bold text-green-600 dark-mode:text-green-300">-</p>
+                </div>
+                <div class="bg-yellow-50 dark-mode:bg-yellow-800 p-4 rounded-xl shadow">
+                    <p class="text-gray-500 dark-mode:text-gray-300">Confidence</p>
+                    <p id="confidence" class="text-2xl font-bold text-yellow-600 dark-mode:text-yellow-200">-</p>
+                </div>
+                <div class="bg-blue-50 dark-mode:bg-blue-800 p-4 rounded-xl shadow">
+                    <p class="text-gray-500 dark-mode:text-gray-300">Emotional Tone</p>
+                    <p id="emotion" class="text-2xl font-bold text-blue-600 dark-mode:text-blue-300">-</p>
+                </div>
+                <div class="bg-red-50 dark-mode:bg-red-800 p-4 rounded-xl shadow">
+                    <p class="text-gray-500 dark-mode:text-gray-300">Urgency Score</p>
+                    <p id="urgency" class="text-2xl font-bold text-red-600 dark-mode:text-red-300">-</p>
+                </div>
+            </div>
+
+            <!-- Score List -->
+            <div class="bg-gray-100 dark-mode:bg-gray-700 p-4 rounded-xl">
+                <p class="text-gray-700 dark-mode:text-gray-200 font-semibold mb-2">🧠 Confidence Scores:</p>
+                <ul id="scoreList" class="list-disc list-inside text-gray-700 dark-mode:text-white"></ul>
+            </div>
+
+            <!-- Chart -->
+            <canvas id="sentimentChart"
+                class="mt-6 max-h-80 bg-white rounded-xl shadow p-4 dark-mode:bg-gray-800"></canvas>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='assets/js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='assets/js/chart-setup.js') }}"></script>
+
+</body>
+
+</html>
