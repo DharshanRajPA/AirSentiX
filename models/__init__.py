@@ -1,17 +1,9 @@
-"""
-This module initializes the models package for Air-Senti-X.
-
-It exposes:
-- Model loading utilities
-- Access to model architectures: BERT + LSTM, BiLSTM, and CNN
-"""
-
-from .architectures.bert_lstm import BertLSTMModel
-from .architectures.bert_bilstm import BertBiLSTMModel
-from .architectures.bert_cnn import BertCNNModel
+from .architectures.bert_lstm import build_bert_lstm
+from .architectures.bert_bilstm import build_bert_bilstm
+from .architectures.bert_cnn import build_bert_cnn
 
 __all__ = [
-    "BertLSTMModel",
-    "BertBiLSTMModel",
-    "BertCNNModel"
+    "build_bert_lstm",
+    "build_bert_bilstm",
+    "build_bert_cnn"
 ]

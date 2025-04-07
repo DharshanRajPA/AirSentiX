@@ -1,74 +1,86 @@
-import os
-import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-import joblib
 import tensorflow as tf
-from transformers import BertTokenizer, TFBertModel
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from sklearn.metrics import classification_report
+import numpy as np
+import pickle
 
-from models.architectures.bert_lstm import build_bert_lstm_model
-from models.architectures.bert_bilstm import build_bert_bilstm_model
-from models.architectures.bert_cnn import build_bert_cnn_model
+from preprocessing.data_cleaning import preprocess_dataset
+from preprocessing.data_split_encode import split_and_encode
+from preprocessing.tokenize_bert import bert_tokenize
 
-# Constants
-MODEL_DIR = "models/trained"
-TOKENIZER_PATH = "preprocessing/bert-base-uncased-tokenizer"
-ENCODER_PATH = "preprocessing/label_encoder.pkl"
+from models.architectures.bert_lstm import build_bert_lstm
+from models.architectures.bert_bilstm import build_bert_bilstm
+from models.architectures.bert_cnn import build_bert_cnn
+
+# --- Configuration ---
+DATA_PATH = 'dataset/Tweets.csv'
 MAX_LEN = 128
-BATCH_SIZE = 16
-EPOCHS = 5
+BATCH_SIZE = 32
+EPOCHS = 3
 
-os.makedirs(MODEL_DIR, exist_ok=True)
+# --- Step 1: Preprocess Dataset ---
+print("[INFO] Cleaning dataset...")
+df = preprocess_dataset(DATA_PATH)
 
-# 1. Load and preprocess data
-df = pd.read_csv("data/tweets.csv")  # Assumes CSV has 'text' and 'label' columns
-texts = df['text'].astype(str).tolist()
-labels = df['label'].tolist()
+# --- Step 2: Split and Encode Labels ---
+print("[INFO] Splitting and encoding labels...")
+train_df, test_df, train_labels, test_labels = split_and_encode(df)
 
-# 2. Tokenization
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-inputs = tokenizer(texts, padding='max_length', truncation=True, max_length=MAX_LEN, return_tensors="np")
+# --- Step 3: Tokenize Text using BERT Tokenizer ---
+print("[INFO] Tokenizing text using BERT...")
+X_train_input_ids, X_train_attention_masks = bert_tokenize(train_df['text'].tolist(), max_len=MAX_LEN)
+X_test_input_ids, X_test_attention_masks = bert_tokenize(test_df['text'].tolist(), max_len=MAX_LEN)
 
-# 3. Label encoding
-label_encoder = LabelEncoder()
-labels_encoded = label_encoder.fit_transform(labels)
+# --- Step 4: Build All Models ---
+num_labels = len(set(train_labels))
 
-# Save tokenizer and encoder
-tokenizer.save_pretrained(TOKENIZER_PATH)
-joblib.dump(label_encoder, ENCODER_PATH)
+print("[INFO] Building models...")
+model_lstm = build_bert_lstm(MAX_LEN, num_labels)
+model_bilstm = build_bert_bilstm(MAX_LEN, num_labels)
+model_cnn = build_bert_cnn(MAX_LEN, num_labels)
 
-# 4. Train-test split
-X_train_ids, X_test_ids, X_train_mask, X_test_mask, y_train, y_test = train_test_split(
-    inputs["input_ids"], inputs["attention_mask"], labels_encoded, test_size=0.2, random_state=42
-)
+models = [model_lstm, model_bilstm, model_cnn]
+model_names = ['bert_lstm', 'bert_bilstm', 'bert_cnn']
 
-# 5. Prepare inputs
-train_inputs = [X_train_ids, X_train_mask]
-test_inputs = [X_test_ids, X_test_mask]
-y_train = tf.keras.utils.to_categorical(y_train)
-y_test = tf.keras.utils.to_categorical(y_test)
-num_classes = y_train.shape[1]
+# --- Step 5: Compile Models ---
+for model in models:
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=2e-5),
+        loss='sparse_categorical_crossentropy',
+        metrics=['accuracy']
+    )
 
-# 6. Build and train models
-def train_and_save(model_builder, name):
-    print(f"Training {name}...")
-    model = model_builder(num_classes)
-    model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
-    
-    checkpoint = ModelCheckpoint(f"{MODEL_DIR}/{name}.h5", monitor="val_accuracy", save_best_only=True, verbose=1)
-    early_stop = EarlyStopping(monitor="val_loss", patience=2, restore_best_weights=True)
-    
-    model.fit(train_inputs, y_train,
-              validation_data=(test_inputs, y_test),
-              epochs=EPOCHS,
-              batch_size=BATCH_SIZE,
-              callbacks=[checkpoint, early_stop])
+# --- Step 6: Train Each Model ---
+for i, model in enumerate(models):
+    print(f"[INFO] Training {model_names[i]} model...")
+    model.fit(
+        [X_train_input_ids, X_train_attention_masks],
+        train_labels,
+        validation_split=0.1,
+        epochs=EPOCHS,
+        batch_size=BATCH_SIZE
+    )
 
-    print(f"{name} training complete!\n")
+# --- Step 7: Predict and Average ---
+print("[INFO] Predicting with ensemble...")
 
-# Train all models
-train_and_save(build_bert_lstm_model, "bert_lstm")
-train_and_save(build_bert_bilstm_model, "bert_bilstm")
-train_and_save(build_bert_cnn_model, "bert_cnn")
+all_preds = []
+for model in models:
+    preds = model.predict([X_test_input_ids, X_test_attention_masks])
+    all_preds.append(preds)
+
+# Average logits
+avg_preds = np.mean(np.array(all_preds), axis=0)
+
+# Get final predicted labels
+final_preds = tf.argmax(avg_preds, axis=1).numpy()
+
+# --- Step 8: Classification Report ---
+print("[RESULT] Ensemble Classification Report:")
+print(classification_report(test_labels, final_preds))
+
+# --- Step 9: Save All Models ---
+for i, model in enumerate(models):
+    model_path = f'models/saved/{model_names[i]}_model'
+    model.save(model_path)
+    print(f"[INFO] {model_names[i]} model saved at {model_path}")
